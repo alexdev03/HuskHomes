@@ -6,6 +6,7 @@ import net.william278.huskhomes.teleport.Teleport;
 import net.william278.huskhomes.util.Permission;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.redistab.RedisTabAPI;
 
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +54,14 @@ public class TpHereCommand extends CommandBase implements TabCompletable {
 
     @Override
     public @NotNull List<String> onTabComplete(@NotNull String[] args, @Nullable OnlineUser user) {
-        return args.length <= 1 ? plugin.getCache().players.stream()
+
+        List<String> cache = RedisTabAPI.getInstance().getTotalPlayers();
+
+        if(user== null || !user.hasPermission("redistab.vanish.see")) {
+            cache.removeAll(RedisTabAPI.getInstance().getVanishedPlayers());
+        }
+
+        return args.length <= 1 ? cache.stream()
                 .filter(s -> s.toLowerCase().startsWith(args.length == 1 ? args[0].toLowerCase() : ""))
                 .sorted().collect(Collectors.toList()) : Collections.emptyList();
     }

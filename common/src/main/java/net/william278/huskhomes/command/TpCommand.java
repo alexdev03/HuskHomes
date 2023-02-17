@@ -10,6 +10,8 @@ import net.william278.huskhomes.teleport.TeleportBuilder;
 import net.william278.huskhomes.util.Permission;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.redistab.RedisTab;
+import org.metadevs.redistab.redistab.RedisTabAPI;
 
 import java.util.*;
 import java.util.logging.Level;
@@ -206,6 +208,12 @@ public class TpCommand extends CommandBase implements TabCompletable, ConsoleExe
     @Override
     public @NotNull List<String> onTabComplete(@NotNull String[] args, @Nullable OnlineUser user) {
         final boolean serveCoordinateCompletions = user != null && user.hasPermission(Permission.COMMAND_TP_TO_COORDINATES.node);
+        List<String> cache = RedisTabAPI.getInstance().getTotalPlayers();
+
+        if(user== null || !user.hasPermission("redistab.vanish.see")) {
+            cache.removeAll(RedisTabAPI.getInstance().getVanishedPlayers());
+        }
+
         switch (args.length) {
             case 0, 1 -> {
                 final ArrayList<String> completions = new ArrayList<>();
@@ -215,7 +223,7 @@ public class TpCommand extends CommandBase implements TabCompletable, ConsoleExe
                         ((int) user.getPosition().x + " " + (int) user.getPosition().y),
                         ((int) user.getPosition().x + " " + (int) user.getPosition().y + " " + (int) user.getPosition().z))
                         : Collections.emptyList());
-                completions.addAll(plugin.getCache().players);
+                completions.addAll(cache);
                 return completions.stream()
                         .filter(s -> s.toLowerCase().startsWith(args.length == 1 ? args[0].toLowerCase() : ""))
                         .sorted().collect(Collectors.toList());
@@ -235,7 +243,7 @@ public class TpCommand extends CommandBase implements TabCompletable, ConsoleExe
                             ((int) user.getPosition().x + " " + (int) user.getPosition().y),
                             ((int) user.getPosition().x + " " + (int) user.getPosition().y + " " + (int) user.getPosition().z))
                             : Collections.emptyList());
-                    completions.addAll(plugin.getCache().players);
+                    completions.addAll(cache);
                 }
                 return completions.stream()
                         .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))

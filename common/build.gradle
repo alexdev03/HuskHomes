@@ -11,6 +11,9 @@ dependencies {
         exclude module: 'slf4j-api'
     }
 
+    compileOnly files('libraries/RedisTabSpigot-3.9-EXPERIMENTAL.jar')
+
+    compileOnly 'org.jetbrains:annotations:23.1.0'
     compileOnly 'org.jetbrains:annotations:24.0.0'
     compileOnly 'com.google.guava:guava:31.1-jre'
     compileOnly 'io.lettuce:lettuce-core:' + lettuce_version
