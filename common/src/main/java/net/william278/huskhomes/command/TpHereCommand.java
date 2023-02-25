@@ -45,6 +45,8 @@ public class TpHereCommand extends CommandBase implements TabCompletable {
                                         .flatMap(teleporter -> plugin.getLocales().getLocale("teleporting_other_complete",
                                                 teleporter.username, onlineUser.username))
                                         .ifPresent(onlineUser::sendMessage);
+
+                                plugin.getDatabase().setLastPosition(onlineUser, onlineUser.getPosition());
                             }
                         }));
             });

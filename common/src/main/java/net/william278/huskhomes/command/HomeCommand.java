@@ -71,7 +71,7 @@ public class HomeCommand extends CommandBase implements TabCompletable, ConsoleE
                     Teleport.builder(plugin, teleporter)
                             .setTarget(home)
                             .toTimedTeleport()
-                            .thenAccept(TimedTeleport::execute);
+                            .thenAccept(TimedTeleport::execute).thenAccept(v -> plugin.getDatabase().setLastPosition(teleporter, teleporter.getPosition()));
                 }, () -> {
                     if (otherHome) {
                         plugin.getLocales().getLocale("error_home_invalid_other", owner.username, homeName)
@@ -115,7 +115,7 @@ public class HomeCommand extends CommandBase implements TabCompletable, ConsoleE
             Teleport.builder(plugin, playerToTeleport)
                     .setTarget(home)
                     .toTeleport()
-                    .thenAccept(Teleport::execute);
+                    .thenAccept(Teleport::execute).thenAccept(v -> plugin.getDatabase().setLastPosition(playerToTeleport, playerToTeleport.getPosition()));
         });
     }
 

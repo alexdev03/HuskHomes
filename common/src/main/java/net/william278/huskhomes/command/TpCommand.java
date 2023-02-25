@@ -202,6 +202,7 @@ public class TpCommand extends CommandBase implements TabCompletable, ConsoleExe
             } else {
                 plugin.getLoggingAdapter().log(Level.WARNING, "Failed to teleport " + playerToTeleport.username + " to " + teleportTarget);
             }
+            plugin.getDatabase().setLastPosition(playerToTeleport, playerToTeleport.getPosition());
         }));
     }
 

@@ -3,6 +3,7 @@ package net.william278.huskhomes.command;
 import net.william278.huskhomes.HuskHomes;
 import net.william278.huskhomes.config.Settings;
 import net.william278.huskhomes.player.OnlineUser;
+import net.william278.huskhomes.position.Position;
 import net.william278.huskhomes.teleport.Teleport;
 import net.william278.huskhomes.teleport.TimedTeleport;
 import net.william278.huskhomes.util.Permission;
@@ -16,13 +17,20 @@ public class BackCommand extends CommandBase {
 
     @Override
     public void onExecute(@NotNull OnlineUser onlineUser, @NotNull String[] args) {
-        plugin.getDatabase().getLastPosition(onlineUser).thenAccept(lastPosition ->
-                lastPosition.ifPresentOrElse(position -> Teleport.builder(plugin, onlineUser)
-                                .setTarget(position)
-                                .setEconomyActions(Settings.EconomyAction.BACK_COMMAND)
-                                .toTimedTeleport()
-                                .thenApply(TimedTeleport::execute),
-                        () -> plugin.getLocales().getLocale("error_no_last_position").ifPresent(onlineUser::sendMessage)));
+        plugin.getDatabase().getLastPosition(onlineUser).thenAccept(lastPosition -> {
+            lastPosition.ifPresentOrElse(position -> Teleport.builder(plugin, onlineUser)
+                            .setTarget(position)
+                            .setEconomyActions(Settings.EconomyAction.BACK_COMMAND)
+                            .toTimedTeleport()
+
+                            .thenApply(TimedTeleport::execute),
+                    () -> plugin.getLocales().getLocale("error_no_last_position").ifPresent(onlineUser::sendMessage));
+        }).exceptionally(e -> {
+            e.printStackTrace();
+            return null;
+        });
+
+        plugin.getDatabase().setLastPosition(onlineUser, onlineUser.getPosition());
     }
 
 }

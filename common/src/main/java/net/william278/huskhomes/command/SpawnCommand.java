@@ -29,7 +29,8 @@ public class SpawnCommand extends CommandBase {
             }
             Teleport.builder(plugin, onlineUser)
                     .setTarget(position.get())
-                    .toTimedTeleport().thenAccept(TimedTeleport::execute);
+                    .toTimedTeleport().thenAccept(TimedTeleport::execute)
+                    .thenAccept(v -> plugin.getDatabase().setLastPosition(onlineUser, onlineUser.getPosition()));
         });
     }
 }
