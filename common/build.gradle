@@ -24,6 +24,7 @@ dependencies {
     compileOnly 'org.xerial:sqlite-jdbc:' + sqlite_driver_version
     compileOnly 'com.mysql:mysql-connector-j:' + mysql_driver_version
 
+    compileOnly 'org.metadevs:RedisTabAPI:1.0-EXPERIMENTAL'
     compileOnly 'org.jetbrains:annotations:24.0.1'
     compileOnly 'com.google.guava:guava:31.1-jre'
     compileOnly 'com.github.plan-player-analytics:Plan:5.5.1923'

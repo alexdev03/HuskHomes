@@ -34,7 +34,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.jetbrains.annotations.NotNull;
+import org.metadevs.redistab.api.RedisTabAPI;
 
 public class BukkitEventListener extends EventListener implements Listener {
 
@@ -97,6 +99,17 @@ public class BukkitEventListener extends EventListener implements Listener {
                     adaptedLocation.getYaw(), adaptedLocation.getPitch(),
                     adaptedLocation.getWorld(), plugin.getServerName()));
         });
+    }
+
+    @EventHandler
+    public void onPluginLoad(PluginEnableEvent e){
+        if(!e.getPlugin().getName().equals("RedisTab")) return;
+
+        BukkitHuskHomes plugin = BukkitHuskHomes.getInstance();
+
+        System.out.println("RedisTab has been detected, enabling RedisTab support");
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.setRedisTabAPI(plugin.getServer().getServicesManager().load(RedisTabAPI.class)), 5);
     }
 
 }

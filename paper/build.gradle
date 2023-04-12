@@ -2,6 +2,12 @@ plugins {
     id 'xyz.jpenilla.run-paper' version '2.0.1'
 }
 
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.papermc.io/repository/maven-public/'}
+
+}
+
 dependencies {
     implementation project(':bukkit')
     compileOnly project(':common')
@@ -48,4 +54,8 @@ tasks {
     runServer {
         minecraftVersion('1.19.4')
     }
+}
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
 }

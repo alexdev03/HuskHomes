@@ -28,6 +28,8 @@ dependencies {
     implementation include('com.mysql:mysql-connector-j:' + mysql_driver_version)
     implementation include('org.xerial:sqlite-jdbc:' + sqlite_driver_version)
 
+    implementation 'org.metadevs:RedisTabAPI:1.0-EXPERIMENTAL'
+
     compileOnly 'org.jetbrains:annotations:24.0.1'
 
     shadow project(path: ":common")

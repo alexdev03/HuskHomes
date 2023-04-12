@@ -68,10 +68,12 @@ import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.api.RedisTabAPI;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
@@ -101,6 +103,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     @Nullable
     private Broker broker;
     private BukkitAudiences audiences;
+    private RedisTabAPI redisTabAPI;
 
     private static BukkitHuskHomes instance;
 
@@ -188,6 +191,12 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
         // Hook into bStats and check for updates
         initialize("metrics", (plugin) -> this.registerMetrics(METRICS_ID));
         this.checkForUpdates();
+
+        getServer().getScheduler().runTaskLater(this, this::loadRedisTabAPI, 5);
+    }
+
+    public void loadRedisTabAPI() {
+        setRedisTabAPI(getServer().getServicesManager().load(RedisTabAPI.class));
     }
 
     @NotNull
@@ -273,6 +282,11 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     @Override
     public Set<SavedUser> getSavedUsers() {
         return savedUsers;
+    }
+
+    @Override
+    public RedisTabAPI getRedisTabAPI() {
+        return redisTabAPI;
     }
 
     @NotNull
@@ -506,4 +520,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
         return this;
     }
 
+    public void setRedisTabAPI(RedisTabAPI redisTabAPI) {
+        this.redisTabAPI = redisTabAPI;
+    }
 }

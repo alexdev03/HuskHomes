@@ -25,7 +25,7 @@ allprojects {
     apply plugin: 'java'
 
     compileJava.options.encoding = 'UTF-8'
-    compileJava.options.release.set 16
+    compileJava.options.release.set 17
     javadoc.options.encoding = 'UTF-8'
     javadoc.options.addStringOption('Xdoclint:none', '-quiet')
 
@@ -42,6 +42,7 @@ allprojects {
         maven { url 'https://repo.alessiodp.com/releases/' }
         maven { url 'https://repo.mikeprimm.com/' }
         maven { url 'https://jitpack.io' }
+        maven { url 'https://repo.metamc.it/repository/meta-repo/' }
     }
 
     dependencies {
@@ -136,4 +137,3 @@ def versionMetadata() {
     }
     return grgit.head().abbreviatedId + (grgit.status().clean ? '' : '-indev')
 }
-

@@ -228,6 +228,11 @@ public class FabricHuskHomes implements DedicatedServerModInitializer, HuskHomes
     }
 
     @Override
+    public org.metadevs.redistab.api.RedisTabAPI getRedisTabAPI() {
+        return null;
+    }
+
+    @Override
     @NotNull
     public Settings getSettings() {
         return settings;

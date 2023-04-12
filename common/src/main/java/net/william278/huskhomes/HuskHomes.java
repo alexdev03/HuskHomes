@@ -50,6 +50,7 @@ import net.william278.huskhomes.util.Validator;
 import org.intellij.lang.annotations.Subst;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.api.RedisTabAPI;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,6 +82,8 @@ public interface HuskHomes extends TaskRunner, EventDispatcher {
 
     @NotNull
     Set<SavedUser> getSavedUsers();
+
+    RedisTabAPI getRedisTabAPI();
 
     default Optional<SavedUser> getSavedUser(@NotNull User user) {
         return getSavedUsers().stream()
@@ -386,10 +389,17 @@ public interface HuskHomes extends TaskRunner, EventDispatcher {
 
     @NotNull
     default List<String> getPlayerList() {
-        return Stream.concat(
-                getGlobalPlayerList().values().stream().flatMap(Collection::stream),
-                getLocalPlayerList().stream()
-        ).distinct().sorted().toList();
+
+        List<String> list = new ArrayList<>(getRedisTabAPI().getTotalPlayers());
+
+        list.removeAll(getRedisTabAPI().getVanishedPlayers());
+
+        return list;
+    }
+
+    @NotNull
+    default List<String> getTotalPlayers() {
+        return getRedisTabAPI().getTotalPlayers();
     }
 
     default void setPlayerList(@NotNull String server, @NotNull List<String> players) {
