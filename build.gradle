@@ -45,6 +45,7 @@ allprojects {
         maven { url 'https://repo.alessiodp.com/releases/' }
         maven { url 'https://repo.mikeprimm.com/' }
         maven { url 'https://jitpack.io' }
+        maven { url 'https://repo.metamc.it/repository/meta-repo/' }
     }
 
     dependencies {
@@ -82,7 +83,7 @@ subprojects {
     }
 
     if (['paper', 'fabric'].contains(project.name)) {
-        compileJava.options.release.set 17
+        compileJava.options.release.set 16
     }
 
     if (['bukkit', 'paper', 'plugin', 'fabric', 'sponge'].contains(project.name)) {

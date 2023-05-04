@@ -19,7 +19,6 @@
 
 package net.william278.huskhomes;
 
-import io.papermc.lib.PaperLib;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.william278.annotaml.Annotaml;
 import net.william278.desertwell.util.Version;
@@ -63,6 +62,10 @@ import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.api.RedisTabAPI;
+import space.arim.morepaperlib.MorePaperLib;
+import space.arim.morepaperlib.scheduling.GracefulScheduling;
+import space.arim.morepaperlib.scheduling.ScheduledTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -72,7 +75,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTaskRunner, BukkitEventDispatcher, PluginMessageListener {
+public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTaskRunner, BukkitEventDispatcher, PluginMessageListener, BukkitSafetyResolver {
 
     /**
      * Metrics ID for <a href="https://bstats.org/plugin/bukkit/HuskHomes/8430">HuskHomes on Bukkit</a>.
@@ -98,6 +101,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     private Broker broker;
     private BukkitAudiences audiences;
     private RedisTabAPI redisTabAPI;
+    private MorePaperLib paperLib;
 
     private static BukkitHuskHomes instance;
 
@@ -436,10 +440,6 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
                 .toList();
     }
 
-    @Override
-    public boolean isBlockUnsafe(@NotNull String blockId) {
-        return unsafeBlocks.isUnsafe(blockId);
-    }
 
     @Override
     public void registerMetrics(int metricsId) {
@@ -500,4 +500,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
         return this;
     }
 
+    public void setRedisTabAPI(RedisTabAPI redisTabAPI) {
+        this.redisTabAPI = redisTabAPI;
+    }
 }

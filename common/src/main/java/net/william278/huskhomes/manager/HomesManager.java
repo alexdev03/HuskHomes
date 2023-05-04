@@ -20,6 +20,7 @@
 package net.william278.huskhomes.manager;
 
 import net.william278.huskhomes.HuskHomes;
+import net.william278.huskhomes.api.BaseHuskHomesAPI;
 import net.william278.huskhomes.command.ListCommand;
 import net.william278.huskhomes.hook.EconomyHook;
 import net.william278.huskhomes.network.Message;
@@ -292,7 +293,9 @@ public class HomesManager {
             final int publicHomes = plugin.getDatabase().getHomes(home.getOwner()).stream()
                     .filter(Home::isPublic)
                     .toList().size();
-            if (publicHomes >= getMaxPublicHomes(home.getOwner())) {
+            Optional<OnlineUser> onlineUser = plugin.findOnlinePlayer(home.getOwner().getUsername());
+            User user = onlineUser.isPresent() ? onlineUser.get() : home.getOwner();
+            if (publicHomes >= getMaxPublicHomes(user)) {
                 throw new ValidationException(ValidationException.Type.REACHED_MAX_PUBLIC_HOMES);
             }
         }
