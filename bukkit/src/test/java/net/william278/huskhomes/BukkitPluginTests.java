@@ -330,8 +330,24 @@ public class BukkitPluginTests {
             Assertions.assertTrue(plugin.getDatabase().getWarp(name).isPresent());
         }
 
+        @DisplayName("Test Querying Warps Case-Insensitively")
+        @ParameterizedTest(name = "Query: \"{0}\"")
+        @MethodSource("provideWarpData")
+        @Order(8)
+        public void testWarpCaseInsensitiveQuery(@NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+            final String nameUpper = name.toUpperCase();
+            final Optional<Warp> nameUpperWarp = plugin.getDatabase().getWarp(nameUpper, true);
+            Assertions.assertTrue(nameUpperWarp.isPresent());
+            Assertions.assertEquals(name, nameUpperWarp.get().getName());
+
+            final String nameLower = name.toLowerCase();
+            final Optional<Warp> nameLowerWarp = plugin.getDatabase().getWarp(nameLower, true);
+            Assertions.assertTrue(nameLowerWarp.isPresent());
+            Assertions.assertEquals(name, nameLowerWarp.get().getName());
+        }
+
         @DisplayName("Test Deleting All Warps")
-        @Order(7)
+        @Order(9)
         @Test
         public void testWarpDeleteAll() {
             final int deleted = plugin.getManager().warps().deleteAllWarps();
@@ -379,7 +395,6 @@ public class BukkitPluginTests {
                     .anyMatch(home -> home.equals(name)));
         }
 
-        // rename
         @DisplayName("Test Home Renaming")
         @ParameterizedTest(name = "Rename: \"{1}\" > \"{1}2\"")
         @MethodSource("provideHomeData")
@@ -407,7 +422,6 @@ public class BukkitPluginTests {
                     .anyMatch(home -> home.equals(name)));
         }
 
-        // description
         @DisplayName("Test Home Description")
         @ParameterizedTest(name = "Edit Description: \"{1}\"")
         @MethodSource("provideHomeData")
@@ -424,7 +438,6 @@ public class BukkitPluginTests {
             Assertions.assertEquals(description, homeDescription.get());
         }
 
-        // relocate
         @DisplayName("Test Home Relocation")
         @ParameterizedTest(name = "Relocate: \"{1}\"")
         @MethodSource("provideHomeData")
@@ -443,7 +456,6 @@ public class BukkitPluginTests {
             Assertions.assertEquals(newPosition.getZ(), homePosition.get().getZ());
         }
 
-        // overwrite
         @DisplayName("Test Home Overwrite")
         @ParameterizedTest(name = "Overwrite: \"{1}\"")
         @MethodSource("provideHomeData")
@@ -462,7 +474,6 @@ public class BukkitPluginTests {
             Assertions.assertEquals(newPosition.getZ(), homePosition.get().getZ());
         }
 
-        // make public
         @DisplayName("Test Making Home Public")
         @ParameterizedTest(name = "Make Public: \"{1}\"")
         @MethodSource("provideHomeData")
@@ -477,7 +488,6 @@ public class BukkitPluginTests {
             Assertions.assertTrue(plugin.getManager().homes().getPublicHomes().get(owner.getUsername()).contains(name));
         }
 
-        // make private
         @DisplayName("Test Making Home Private")
         @ParameterizedTest(name = "Make Private: \"{1}\"")
         @MethodSource("provideHomeData")
@@ -494,11 +504,26 @@ public class BukkitPluginTests {
                     .contains(name));
         }
 
-        // delete
+        @DisplayName("Test Querying Homes Case-Insensitively")
+        @ParameterizedTest(name = "Query: \"{1}\"")
+        @MethodSource("provideHomeData")
+        @Order(8)
+        public void testWarpCaseInsensitiveQuery(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+            final String nameUpper = name.toUpperCase();
+            final Optional<Home> nameUpperWarp = plugin.getDatabase().getHome(owner, nameUpper, true);
+            Assertions.assertTrue(nameUpperWarp.isPresent());
+            Assertions.assertEquals(name, nameUpperWarp.get().getName());
+
+            final String nameLower = name.toLowerCase();
+            final Optional<Home> nameLowerWarp = plugin.getDatabase().getHome(owner, nameLower, true);
+            Assertions.assertTrue(nameLowerWarp.isPresent());
+            Assertions.assertEquals(name, nameLowerWarp.get().getName());
+        }
+
         @DisplayName("Test Home Deletion")
         @ParameterizedTest(name = "Delete: \"{1}\"")
         @MethodSource("provideHomeData")
-        @Order(8)
+        @Order(9)
         public void testHomeDeletion(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
             plugin.getManager().homes().deleteHome(owner, name);
             Assertions.assertFalse(plugin.getDatabase().getHome(owner, name).isPresent());
@@ -509,9 +534,8 @@ public class BukkitPluginTests {
             plugin.getManager().homes().createHome(owner, name, position);
         }
 
-        // delete all
         @DisplayName("Test Deleting All Homes")
-        @Order(9)
+        @Order(10)
         @Test
         public void testDeleteAllHomes() {
             final int deleted = plugin.getManager().homes().deleteAllHomes(homeOwner);

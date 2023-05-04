@@ -22,7 +22,7 @@ package net.william278.huskhomes;
 import io.papermc.lib.PaperLib;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.william278.annotaml.Annotaml;
-import net.william278.desertwell.Version;
+import net.william278.desertwell.util.Version;
 import net.william278.huskhomes.command.BukkitCommand;
 import net.william278.huskhomes.command.Command;
 import net.william278.huskhomes.command.DisabledCommand;
@@ -52,15 +52,10 @@ import net.william278.huskhomes.user.BukkitUser;
 import net.william278.huskhomes.user.ConsoleUser;
 import net.william278.huskhomes.user.OnlineUser;
 import net.william278.huskhomes.user.SavedUser;
-import net.william278.huskhomes.util.BukkitAdapter;
-import net.william278.huskhomes.util.BukkitTaskRunner;
-import net.william278.huskhomes.util.UnsafeBlocks;
-import net.william278.huskhomes.util.Validator;
+import net.william278.huskhomes.util.*;
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -68,14 +63,12 @@ import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.metadevs.redistab.api.RedisTabAPI;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -85,6 +78,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
      * Metrics ID for <a href="https://bstats.org/plugin/bukkit/HuskHomes/8430">HuskHomes on Bukkit</a>.
      */
     private static final int METRICS_ID = 8430;
+    private ConcurrentHashMap<Integer, ScheduledTask> tasks;
     private Set<SavedUser> savedUsers;
     private Settings settings;
     private Locales locales;
@@ -132,6 +126,8 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     public void onEnable() {
         // Create adventure audience
         this.audiences = BukkitAudiences.create(this);
+        this.paperLib = new MorePaperLib(this);
+        this.tasks = new ConcurrentHashMap<>();
         this.savedUsers = new HashSet<>();
         this.globalPlayerList = new HashMap<>();
         this.currentlyOnWarmup = new HashSet<>();
@@ -386,40 +382,6 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     }
 
     @Override
-    public CompletableFuture<Optional<Location>> findSafeGroundLocation(@NotNull Location location) {
-        final org.bukkit.Location bukkitLocation = BukkitAdapter.adaptLocation(location).orElse(null);
-        if (bukkitLocation == null || bukkitLocation.getWorld() == null) {
-            return CompletableFuture.completedFuture(Optional.empty());
-        }
-
-        return PaperLib.getChunkAtAsync(bukkitLocation).thenApply(Chunk::getChunkSnapshot).thenApply(snapshot -> {
-            final int chunkX = bukkitLocation.getBlockX() & 0xF;
-            final int chunkZ = bukkitLocation.getBlockZ() & 0xF;
-
-            for (int dX = -1; dX <= 2; dX++) {
-                for (int dZ = -1; dZ <= 2; dZ++) {
-                    final int x = chunkX + dX;
-                    final int z = chunkZ + dZ;
-                    if (x < 0 || x >= 16 || z < 0 || z >= 16) {
-                        continue;
-                    }
-                    final int y = snapshot.getHighestBlockYAt(x, z);
-                    final Material blockType = snapshot.getBlockType(chunkX, y, chunkZ);
-                    if (!isBlockUnsafe(blockType.getKey().toString())) {
-                        return Optional.of(Location.at(
-                                (location.getX() + dX) + 0.5d,
-                                y + 1.25d,
-                                (location.getZ() + dZ) + 0.5d,
-                                location.getWorld()
-                        ));
-                    }
-                }
-            }
-            return Optional.empty();
-        });
-    }
-
-    @Override
     @NotNull
     public Version getVersion() {
         return Version.fromString(getDescription().getVersion(), "-");
@@ -457,6 +419,12 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     @Override
     public void setUnsafeBlocks(@NotNull UnsafeBlocks unsafeBlocks) {
         this.unsafeBlocks = unsafeBlocks;
+    }
+
+    @Override
+    @NotNull
+    public UnsafeBlocks getUnsafeBlocks() {
+        return unsafeBlocks;
     }
 
     @Override
@@ -516,11 +484,20 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
 
     @Override
     @NotNull
+    public GracefulScheduling getScheduler() {
+        return paperLib.scheduling();
+    }
+
+    @Override
+    @NotNull
+    public ConcurrentHashMap<Integer, ScheduledTask> getTasks() {
+        return tasks;
+    }
+
+    @Override
+    @NotNull
     public HuskHomes getPlugin() {
         return this;
     }
 
-    public void setRedisTabAPI(RedisTabAPI redisTabAPI) {
-        this.redisTabAPI = redisTabAPI;
-    }
 }

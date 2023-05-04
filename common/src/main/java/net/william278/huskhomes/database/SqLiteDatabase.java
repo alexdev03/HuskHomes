@@ -181,7 +181,7 @@ public class SqLiteDatabase extends Database {
                 Statement.RETURN_GENERATED_KEYS)) {
 
             statement.setInt(1, setPosition(position, connection));
-            statement.setString(2, position.getMeta().getName());
+            statement.setString(2, position.getName());
             statement.setString(3, position.getMeta().getDescription());
             statement.setString(4, position.getMeta().getSerializedTags());
             statement.setTimestamp(5, Timestamp.from(position.getMeta().getCreationTime()));
@@ -216,7 +216,7 @@ public class SqLiteDatabase extends Database {
                         `description`=?,
                         `tags`=?
                         WHERE `id`=?;"""))) {
-                    updateStatement.setString(1, position.getMeta().getName());
+                    updateStatement.setString(1, position.getName());
                     updateStatement.setString(2, position.getMeta().getDescription());
                     updateStatement.setString(3, position.getMeta().getSerializedTags());
                     updateStatement.setInt(4, savedPositionId);
@@ -429,7 +429,7 @@ public class SqLiteDatabase extends Database {
     }
 
     @Override
-    public Optional<Home> getHome(@NotNull User user, @NotNull String homeName) {
+    public Optional<Home> getHome(@NotNull User user, @NotNull String homeName, boolean caseInsensitive) {
         try {
             try (PreparedStatement statement = getConnection().prepareStatement(formatStatementTables("""
                     SELECT `%homes_table%`.`uuid` AS `home_uuid`, `owner_uuid`, `username` AS `owner_username`, `name`, `description`, `tags`, `timestamp`, `x`, `y`, `z`, `yaw`, `pitch`, `world_name`, `world_uuid`, `server_name`, `public`
@@ -438,7 +438,7 @@ public class SqLiteDatabase extends Database {
                     INNER JOIN `%positions_table%` ON `%saved_positions_table%`.`position_id`=`%positions_table%`.`id`
                     INNER JOIN `%players_table%` ON `%homes_table%`.`owner_uuid`=`%players_table%`.`uuid`
                     WHERE `owner_uuid`=?
-                    AND `name`=?;"""))) {
+                    """ + (caseInsensitive ? "AND UPPER(`name`) LIKE UPPER(?);" : "AND `name`=?;")))) {
                 statement.setString(1, user.getUuid().toString());
                 statement.setString(2, homeName);
 
@@ -506,14 +506,14 @@ public class SqLiteDatabase extends Database {
     }
 
     @Override
-    public Optional<Warp> getWarp(@NotNull String warpName) {
+    public Optional<Warp> getWarp(@NotNull String warpName, boolean caseInsensitive) {
         try {
             try (PreparedStatement statement = getConnection().prepareStatement(formatStatementTables("""
                     SELECT `%warps_table%`.`uuid` AS `warp_uuid`, `name`, `description`, `tags`, `timestamp`, `x`, `y`, `z`, `yaw`, `pitch`, `world_name`, `world_uuid`, `server_name`
                     FROM `%warps_table%`
                     INNER JOIN `%saved_positions_table%` ON `%warps_table%`.`saved_position_id`=`%saved_positions_table%`.`id`
                     INNER JOIN `%positions_table%` ON `%saved_positions_table%`.`position_id`=`%positions_table%`.`id`
-                    WHERE `name`=?;"""))) {
+                    """ + (caseInsensitive ? "WHERE UPPER(`name`) LIKE UPPER(?);" : "WHERE `name`=?;")))) {
                 statement.setString(1, warpName);
 
                 final ResultSet resultSet = statement.executeQuery();
