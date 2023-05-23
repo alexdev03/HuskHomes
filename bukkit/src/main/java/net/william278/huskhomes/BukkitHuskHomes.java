@@ -37,6 +37,7 @@ import net.william278.huskhomes.hook.Hook;
 import net.william278.huskhomes.hook.PlaceholderAPIHook;
 import net.william278.huskhomes.hook.RedisEconomyHook;
 import net.william278.huskhomes.hook.VaultEconomyHook;
+import net.william278.huskhomes.importer.EssentialsXImporter;
 import net.william278.huskhomes.listener.BukkitEventListener;
 import net.william278.huskhomes.listener.EventListener;
 import net.william278.huskhomes.manager.Manager;
@@ -168,6 +169,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
             });
         }
 
+        // Set the random teleport engine
         setRandomTeleportEngine(new NormalDistributionEngine(this));
 
         // Register plugin hooks (Economy, Maps, Plan)
@@ -220,6 +222,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     public void registerHooks() {
         HuskHomes.super.registerHooks();
 
+        // Hooks
         if (getSettings().doEconomy()) {
             if (isDependencyLoaded("RedisEconomy")) {
                 getHooks().add(new RedisEconomyHook(this));
@@ -229,6 +232,11 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
         }
         if (isDependencyLoaded("PlaceholderAPI")) {
             getHooks().add(new PlaceholderAPIHook(this));
+        }
+
+        // Importers
+        if (isDependencyLoaded("Essentials")) {
+            getHooks().add(new EssentialsXImporter(this));
         }
     }
 
@@ -362,7 +370,12 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     @Override
     public void setServerSpawn(@NotNull Location location) {
         try {
-            this.serverSpawn = Annotaml.create(new File(getDataFolder(), "spawn.yml"), new Spawn(location)).get();
+            // Create or update the spawn.yml file
+            final File spawnFile = new File(getDataFolder(), "spawn.yml");
+            if (spawnFile.exists() && !spawnFile.delete()) {
+                log(Level.WARNING, "Failed to delete the existing spawn.yml file");
+            }
+            this.serverSpawn = Annotaml.create(spawnFile, new Spawn(location)).get();
 
             // Update the world spawn location, too
             BukkitAdapter.adaptLocation(location).ifPresent(bukkitLocation -> {
@@ -443,6 +456,10 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
 
     @Override
     public void registerMetrics(int metricsId) {
+        if (!getVersion().getMetadata().isBlank()) {
+            return;
+        }
+
         try {
             final Metrics metrics = new Metrics(this, metricsId);
             metrics.addCustomChart(new SimplePie("bungee_mode", () -> Boolean.toString(getSettings().doCrossServer())));
@@ -454,8 +471,8 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
             metrics.addCustomChart(new SimplePie("using_economy", () -> Boolean.toString(getSettings().doEconomy())));
             metrics.addCustomChart(new SimplePie("using_map", () -> Boolean.toString(getSettings().doMapHook())));
             getMapHook().ifPresent(hook -> metrics.addCustomChart(new SimplePie("map_type", hook::getName)));
-        } catch (Exception e) {
-            log(Level.WARNING, "Failed to register metrics", e);
+        } catch (Throwable e) {
+            log(Level.WARNING, "Failed to register bStats metrics (" + e.getMessage() + ")");
         }
     }
 

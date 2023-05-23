@@ -90,6 +90,7 @@ public class TeleportRequest {
     /**
      * The user making the request
      */
+    @NotNull
     public String getRequesterName() {
         return requesterName;
     }
@@ -162,7 +163,7 @@ public class TeleportRequest {
          */
         ACCEPTED,
         /**
-         * The teleport request has been declined by the recipient
+         * The recipient has declined the teleport request
          */
         DECLINED,
         /**

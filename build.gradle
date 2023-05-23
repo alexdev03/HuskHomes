@@ -43,6 +43,7 @@ allprojects {
         maven { url 'https://repo.extendedclip.com/content/repositories/placeholderapi/' }
         maven { url 'https://repo.minebench.de/' }
         maven { url 'https://repo.alessiodp.com/releases/' }
+        maven { url 'https://repo.essentialsx.net/releases/' }
         maven { url 'https://repo.mikeprimm.com/' }
         maven { url 'https://jitpack.io' }
         maven { url 'https://repo.metamc.it/repository/meta-repo/' }
@@ -106,6 +107,35 @@ subprojects {
             shadowJar.dependsOn(sourcesJar, javadocJar)
 
             publishing {
+                repositories {
+                    if (System.getenv("RELEASES_MAVEN_USERNAME") != null) {
+                        maven {
+                            name = "william278-releases"
+                            url = "https://repo.william278.net/releases"
+                            credentials {
+                                username = System.getenv("RELEASES_MAVEN_USERNAME")
+                                password = System.getenv("RELEASES_MAVEN_PASSWORD")
+                            }
+                            authentication {
+                                basic(BasicAuthentication)
+                            }
+                        }
+                    }
+                    if (System.getenv("SNAPSHOTS_MAVEN_USERNAME") != null) {
+                        maven {
+                            name = "william278-snapshots"
+                            url = "https://repo.william278.net/snapshots"
+                            credentials {
+                                username = System.getenv("SNAPSHOTS_MAVEN_USERNAME")
+                                password = System.getenv("SNAPSHOTS_MAVEN_PASSWORD")
+                            }
+                            authentication {
+                                basic(BasicAuthentication)
+                            }
+                        }
+                    }
+                }
+
                 publications {
                     mavenJava(MavenPublication) {
                         groupId = 'net.william278'

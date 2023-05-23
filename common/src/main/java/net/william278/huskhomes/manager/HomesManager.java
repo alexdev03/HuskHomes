@@ -163,25 +163,25 @@ public class HomesManager {
             throw new ValidationException(ValidationException.Type.NAME_INVALID);
         }
 
-        // Validate against user max homes
-        final int homeCount = plugin.getDatabase().getHomes(owner).size();
-        if (homeCount >= getMaxHomes(owner)) {
+        // Determine what the new home count would be & validate against user max homes
+        int homes = plugin.getDatabase().getHomes(owner).size() + (existingHome.isPresent() ? 0 : 1);
+        if (homes > getMaxHomes(owner)) {
             throw new ValidationException(ValidationException.Type.REACHED_MAX_HOMES);
         }
 
         // Validate against user home slots
         final SavedUser savedOwner = plugin.getSavedUser(owner)
                 .orElseThrow(() -> new IllegalStateException("User data not found for " + owner.getUuid()));
-        if (plugin.getSettings().doEconomy() && homeCount >= getFreeHomes(owner) && homeCount >= savedOwner.getHomeSlots()) {
+        if (plugin.getSettings().doEconomy() && homes > getFreeHomes(owner) && homes > savedOwner.getHomeSlots()) {
             if (!buyAdditionalSlots || plugin.getEconomyHook().isEmpty() || !(owner instanceof OnlineUser online)) {
                 throw new ValidationException(ValidationException.Type.NOT_ENOUGH_HOME_SLOTS);
             }
 
-            if (!plugin.validateEconomyCheck(online, EconomyHook.Action.ADDITIONAL_HOME_SLOT)) {
+            // Perform transaction and increase user slot size
+            if (!plugin.canPerformTransaction(online, EconomyHook.Action.ADDITIONAL_HOME_SLOT)) {
                 throw new ValidationException(ValidationException.Type.NOT_ENOUGH_MONEY);
             }
-
-            plugin.performEconomyTransaction(online, EconomyHook.Action.ADDITIONAL_HOME_SLOT);
+            plugin.performTransaction(online, EconomyHook.Action.ADDITIONAL_HOME_SLOT);
             plugin.editUserData(online, (SavedUser saved) -> saved.setHomeSlots(saved.getHomeSlots() + 1));
         }
 
@@ -289,13 +289,11 @@ public class HomesManager {
     }
 
     public void setHomePrivacy(@NotNull Home home, boolean isPublic) {
-        if (isPublic) {
+        if (isPublic && home.getOwner() instanceof OnlineUser online) {
             final int publicHomes = plugin.getDatabase().getHomes(home.getOwner()).stream()
                     .filter(Home::isPublic)
                     .toList().size();
-            Optional<OnlineUser> onlineUser = plugin.findOnlinePlayer(home.getOwner().getUsername());
-            User user = onlineUser.isPresent() ? onlineUser.get() : home.getOwner();
-            if (publicHomes >= getMaxPublicHomes(user)) {
+            if (publicHomes >= getMaxPublicHomes(online)) {
                 throw new ValidationException(ValidationException.Type.REACHED_MAX_PUBLIC_HOMES);
             }
         }
