@@ -19,13 +19,13 @@
 
 package net.william278.huskhomes.network;
 
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
 import net.william278.huskhomes.HuskHomes;
+import net.william278.huskhomes.redis.RedisImpl;
+import net.william278.huskhomes.redis.lettuce.RedisPubSub;
 import net.william278.huskhomes.user.OnlineUser;
 import org.jetbrains.annotations.NotNull;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
-import redis.clients.jedis.JedisPubSub;
 
 import java.util.logging.Level;
 
@@ -33,7 +33,7 @@ import java.util.logging.Level;
  * Redis PubSub broker implementation
  */
 public class RedisBroker extends PluginMessageBroker {
-    private JedisPool jedisPool;
+    private RedisImpl redisImpl;
 
     public RedisBroker(@NotNull HuskHomes plugin) {
         super(plugin);
@@ -48,8 +48,12 @@ public class RedisBroker extends PluginMessageBroker {
         final int port = plugin.getSettings().getRedisPort();
         final boolean useSSL = plugin.getSettings().useRedisSsl();
 
-        this.jedisPool = password.isEmpty() ? new JedisPool(new JedisPoolConfig(), host, port, 0, useSSL)
-                : new JedisPool(new JedisPoolConfig(), host, port, 0, password, useSSL);
+        RedisURI.Builder builder = RedisURI.builder()
+                .withHost(host)
+                .withPort(port)
+                .withSsl(useSSL);
+
+        redisImpl = new RedisImpl(RedisClient.create(builder.build()));
 
         new Thread(getSubscriber(), plugin.getKey("redis_subscriber").toString()).start();
 
@@ -59,10 +63,11 @@ public class RedisBroker extends PluginMessageBroker {
     @NotNull
     private Runnable getSubscriber() {
         return () -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                jedis.subscribe(new JedisPubSub() {
+
+            redisImpl.getPubSubConnection(c -> {
+                c.addListener(new RedisPubSub<>() {
                     @Override
-                    public void onMessage(@NotNull String channel, @NotNull String encodedMessage) {
+                    public void message(String channel, String encodedMessage) {
                         if (!channel.equals(getSubChannelId())) {
                             return;
                         }
@@ -78,37 +83,34 @@ public class RedisBroker extends PluginMessageBroker {
                         if (message.getScope() == Message.Scope.PLAYER) {
                             plugin.getOnlineUsers().stream()
                                     .filter(online -> message.getTarget().equals(Message.TARGET_ALL)
-                                                      || online.getUsername().equals(message.getTarget()))
+                                            || online.getUsername().equals(message.getTarget()))
                                     .forEach(receiver -> handle(receiver, message));
                             return;
                         }
 
                         if (message.getTarget().equals(plugin.getServerName())
-                            || message.getTarget().equals(Message.TARGET_ALL)) {
+                                || message.getTarget().equals(Message.TARGET_ALL)) {
                             plugin.getOnlineUsers().stream()
                                     .findAny()
                                     .ifPresent(receiver -> handle(receiver, message));
                         }
                     }
-                }, getSubChannelId());
-            }
+                });
+                c.async().subscribe(getSubChannelId());
+            });
         };
     }
 
     @Override
     protected void send(@NotNull Message message, @NotNull OnlineUser sender) {
-        plugin.runAsync(() -> {
-            try (Jedis jedis = jedisPool.getResource()) {
-                jedis.publish(getSubChannelId(), plugin.getGson().toJson(message));
-            }
-        });
+        redisImpl.getConnectionAsync(c -> c.publish(getSubChannelId(), plugin.getGson().toJson(message)));
     }
 
     @Override
     public void close() {
         super.close();
-        if (jedisPool != null) {
-            jedisPool.close();
+        if (redisImpl != null) {
+            redisImpl.close();
         }
     }
 

@@ -16,7 +16,7 @@ softdepend:
   - Plan
   - Essentials
 libraries:
-  - 'redis.clients:jedis:${jedis_version}'
+  - 'io.lettuce:lettuce-core:${lettuce_version}'
   - 'com.mysql:mysql-connector-j:${mysql_driver_version}'
   - 'org.xerial:sqlite-jdbc:${sqlite_driver_version}'
 

@@ -20,7 +20,7 @@ dependencies {
         exclude module: 'slf4j-api'
     }
 
-    compileOnly 'redis.clients:jedis:' + jedis_version
+    compileOnly 'io.lettuce:lettuce-core:' + lettuce_version
     compileOnly 'org.xerial:sqlite-jdbc:' + sqlite_driver_version
     compileOnly 'com.mysql:mysql-connector-j:' + mysql_driver_version
 
