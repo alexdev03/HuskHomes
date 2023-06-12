@@ -82,7 +82,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
      * Metrics ID for <a href="https://bstats.org/plugin/bukkit/HuskHomes/8430">HuskHomes on Bukkit</a>.
      */
     private static final int METRICS_ID = 8430;
-    private ConcurrentHashMap<Integer, ScheduledTask> tasks;
+    private ConcurrentHashMap<UUID, ScheduledTask> tasks;
     private Set<SavedUser> savedUsers;
     private Settings settings;
     private Locales locales;
@@ -233,6 +233,11 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
         if (isDependencyLoaded("PlaceholderAPI")) {
             getHooks().add(new PlaceholderAPIHook(this));
         }
+    }
+
+    @Override
+    public void registerImporters() {
+        HuskHomes.super.registerImporters();
 
         // Importers
         if (isDependencyLoaded("Essentials")) {
@@ -507,7 +512,7 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
 
     @Override
     @NotNull
-    public ConcurrentHashMap<Integer, ScheduledTask> getTasks() {
+    public ConcurrentHashMap<UUID, ScheduledTask> getTasks() {
         return tasks;
     }
 

@@ -19,55 +19,66 @@
 
 package net.william278.huskhomes.util;
 
+import net.william278.huskhomes.FabricHuskHomes;
 import org.jetbrains.annotations.NotNull;
-import space.arim.morepaperlib.scheduling.GracefulScheduling;
-import space.arim.morepaperlib.scheduling.ScheduledTask;
 
-import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.function.Supplier;
 
-public interface BukkitTaskRunner extends TaskRunner {
+public interface FabricTaskRunner extends TaskRunner {
 
     @Override
     default void runAsync(@NotNull Runnable runnable) {
-        getScheduler().asyncScheduler().run(runnable);
+        CompletableFuture.runAsync(runnable, getPlugin().getMinecraftServer());
     }
 
     @Override
     default <T> CompletableFuture<T> supplyAsync(@NotNull Supplier<T> supplier) {
-        final CompletableFuture<T> future = new CompletableFuture<>();
-        getScheduler().asyncScheduler().run(() -> future.complete(supplier.get()));
-        return future;
+        return CompletableFuture.supplyAsync(supplier, getPlugin().getMinecraftServer());
     }
 
     @Override
     default void runSync(@NotNull Runnable runnable) {
-        getScheduler().globalRegionalScheduler().run(runnable);
+        getPlugin().getMinecraftServer().executeSync(runnable);
     }
 
     @NotNull
     @Override
-    default UUID runAsyncRepeating(@NotNull Runnable runnable, long period) {
+    default UUID runAsyncRepeating(@NotNull Runnable runnable, long delay) {
         final UUID taskId = UUID.randomUUID();
-        getTasks().put(taskId, getScheduler().asyncScheduler().runAtFixedRate(
-                runnable, Duration.ZERO, getDurationTicks(period))
-        );
+        final CompletableFuture<?> future = new CompletableFuture<>();
+
+        final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+        executor.scheduleAtFixedRate(() -> {
+            if (future.isCancelled()) {
+                executor.shutdown();
+                return;
+            }
+            runnable.run();
+        }, 0, delay * 50, TimeUnit.MILLISECONDS);
+
+        getTasks().put(taskId, future);
         return taskId;
     }
 
     @Override
     default void runLater(@NotNull Runnable runnable, long delay) {
-        getScheduler().asyncScheduler().runDelayed(runnable, getDurationTicks(delay));
+        CompletableFuture.runAsync(() -> {
+            try {
+                Thread.sleep(delay * 50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return;
+            }
+            runnable.run();
+        }, getPlugin().getMinecraftServer());
     }
 
     @Override
     default void cancelTask(@NotNull UUID taskId) {
-        getTasks().computeIfPresent(taskId, (id, task) -> {
-            task.cancel();
+        getTasks().computeIfPresent(taskId, (uuid, completableFuture) -> {
+            completableFuture.cancel(true);
             return null;
         });
         getTasks().remove(taskId);
@@ -75,21 +86,16 @@ public interface BukkitTaskRunner extends TaskRunner {
 
     @Override
     default void cancelAllTasks() {
-        getScheduler().cancelGlobalTasks();
-        getTasks().values().forEach(ScheduledTask::cancel);
+        getTasks().values().forEach(task -> task.cancel(true));
         getTasks().clear();
     }
 
     @NotNull
-    GracefulScheduling getScheduler();
-
-    @NotNull
     @Override
-    ConcurrentHashMap<UUID, ScheduledTask> getTasks();
+    ConcurrentHashMap<UUID, CompletableFuture<?>> getTasks();
 
+    @Override
     @NotNull
-    default Duration getDurationTicks(long ticks) {
-        return Duration.of(ticks * 50, ChronoUnit.MILLIS);
-    }
+    FabricHuskHomes getPlugin();
 
 }
