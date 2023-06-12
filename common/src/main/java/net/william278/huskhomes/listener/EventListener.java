@@ -160,27 +160,29 @@ public class EventListener {
      */
     protected final void handlePlayerLeave(@NotNull OnlineUser onlineUser) {
         // Set offline position
-        plugin.getDatabase().setOfflinePosition(onlineUser, onlineUser.getPosition());
+        plugin.runAsync(() -> {
+                    plugin.getDatabase().setOfflinePosition(onlineUser, onlineUser.getPosition());
+                    // Remove this user's home cache
+                    plugin.getManager().homes().removeUserHomes(onlineUser);
 
-        // Remove this user's home cache
-        plugin.getManager().homes().removeUserHomes(onlineUser);
+                    // Update global lists
+                    if (plugin.getSettings().doCrossServer()) {
+                        final List<String> localPlayerList = plugin.getLocalPlayerList().stream()
+                                .filter(player -> !player.equals(onlineUser.getUsername()))
+                                .toList();
 
-        // Update global lists
-        if (plugin.getSettings().doCrossServer()) {
-            final List<String> localPlayerList = plugin.getLocalPlayerList().stream()
-                    .filter(player -> !player.equals(onlineUser.getUsername()))
-                    .toList();
+                        if (plugin.getSettings().getBrokerType() == Broker.Type.REDIS) {
+                            this.synchronizeGlobalPlayerList(onlineUser, localPlayerList);
+                            return;
+                        }
 
-            if (plugin.getSettings().getBrokerType() == Broker.Type.REDIS) {
-                this.synchronizeGlobalPlayerList(onlineUser, localPlayerList);
-                return;
-            }
-
-            plugin.getOnlineUsers().stream()
-                    .filter(user -> !user.equals(onlineUser))
-                    .findAny()
-                    .ifPresent(player -> this.synchronizeGlobalPlayerList(player, localPlayerList));
-        }
+                        plugin.getOnlineUsers().stream()
+                                .filter(user -> !user.equals(onlineUser))
+                                .findAny()
+                                .ifPresent(player -> this.synchronizeGlobalPlayerList(player, localPlayerList));
+                    }
+                }
+        );
     }
 
     // Synchronize the global player list
@@ -226,7 +228,7 @@ public class EventListener {
             // Display the return by death via /back notification
             final boolean canReturnByDeath = plugin.getCommand(BackCommand.class)
                     .map(command -> onlineUser.hasPermission(command.getPermission())
-                                    && onlineUser.hasPermission(command.getPermission("death")))
+                            && onlineUser.hasPermission(command.getPermission("death")))
                     .orElse(false);
             if (plugin.getSettings().doBackCommandReturnByDeath() && canReturnByDeath) {
                 plugin.getLocales().getLocale("return_by_death_notification")
