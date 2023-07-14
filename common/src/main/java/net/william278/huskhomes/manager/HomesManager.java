@@ -22,7 +22,6 @@ package net.william278.huskhomes.manager;
 import net.william278.huskhomes.HuskHomes;
 import net.william278.huskhomes.api.BaseHuskHomesAPI;
 import net.william278.huskhomes.command.ListCommand;
-import net.william278.huskhomes.hook.EconomyHook;
 import net.william278.huskhomes.network.Message;
 import net.william278.huskhomes.network.Payload;
 import net.william278.huskhomes.position.Home;
@@ -31,6 +30,7 @@ import net.william278.huskhomes.position.PositionMeta;
 import net.william278.huskhomes.user.OnlineUser;
 import net.william278.huskhomes.user.SavedUser;
 import net.william278.huskhomes.user.User;
+import net.william278.huskhomes.util.TransactionResolver;
 import net.william278.huskhomes.util.ValidationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,7 +54,9 @@ public class HomesManager {
     }
 
     /**
-     * Cached user homes - maps a username to a list of their homes
+     * Cached user homes - maps a username to a list of their homes.
+     *
+     * @return a map of usernames to a list of their home names.
      */
     @NotNull
     public Map<String, List<String>> getUserHomes() {
@@ -63,15 +65,20 @@ public class HomesManager {
                         HashMap::putAll);
     }
 
+    /**
+     * Get a list of all cached set home identifiers.
+     *
+     * @return a list of all cached set home identifiers
+     */
     @NotNull
-    public List<String> getUserHomeNames() {
+    public List<String> getUserHomeIdentifiers() {
         return userHomes.entrySet().stream()
                 .flatMap(e -> e.getValue().stream().map(Home::getIdentifier))
                 .toList();
     }
 
     /**
-     * Cached public homes - maps a username to a list of their public homes
+     * Cached public homes - maps a username to a list of their public homes.
      */
     @NotNull
     public Map<String, List<String>> getPublicHomes() {
@@ -80,17 +87,33 @@ public class HomesManager {
                         HashMap::putAll);
     }
 
+    /**
+     * Get a list of all cached public home identifiers.
+     *
+     * @return a list of all cached public home identifiers
+     */
     @NotNull
-    public List<String> getPublicHomeNames() {
+    public List<String> getPublicHomeIdentifiers() {
         return publicHomes.stream()
                 .map(Home::getIdentifier)
                 .toList();
     }
 
+    /**
+     * Cache user homes for a given user.
+     *
+     * @param user the user to cache homes for
+     */
     public void cacheUserHomes(@NotNull User user) {
         userHomes.put(user.getUsername(), new ConcurrentLinkedQueue<>(plugin.getDatabase().getHomes(user)));
     }
 
+    /**
+     * Cache a home for a given user.
+     *
+     * @param home      the home to cache
+     * @param propagate whether to propagate the cache update to other servers (if cross-server is enabled)
+     */
     public void cacheHome(@NotNull Home home, boolean propagate) {
         userHomes.computeIfPresent(home.getOwner().getUsername(), (k, v) -> {
             v.remove(home);
@@ -133,6 +156,13 @@ public class HomesManager {
         }
     }
 
+    /**
+     * Propagate the update of a home/warp to other servers (if cross-server is enabled).
+     *
+     * <p>This works by broking a message requesting that other servers fetch the updated home from the database.
+     *
+     * @param homeId the UUID of the home/warp to update
+     */
     private void propagateCacheUpdate(@NotNull UUID homeId) {
         if (plugin.getSettings().doCrossServer()) {
             plugin.getOnlineUsers().stream().findAny().ifPresent(user -> Message.builder()
@@ -179,10 +209,10 @@ public class HomesManager {
             }
 
             // Perform transaction and increase user slot size
-            if (!plugin.canPerformTransaction(online, EconomyHook.Action.ADDITIONAL_HOME_SLOT)) {
-                throw new ValidationException(ValidationException.Type.NOT_ENOUGH_MONEY);
+            if (!plugin.validateTransaction(online, TransactionResolver.Action.ADDITIONAL_HOME_SLOT)) {
+                throw new ValidationException(ValidationException.Type.TRANSACTION_FAILED);
             }
-            plugin.performTransaction(online, EconomyHook.Action.ADDITIONAL_HOME_SLOT);
+            plugin.performTransaction(online, TransactionResolver.Action.ADDITIONAL_HOME_SLOT);
             plugin.editUserData(online, (SavedUser saved) -> saved.setHomeSlots(saved.getHomeSlots() + 1));
         }
 
@@ -197,7 +227,8 @@ public class HomesManager {
         this.cacheHome(home, true);
     }
 
-    public void createHome(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position position) throws ValidationException {
+    public void createHome(@NotNull OnlineUser owner, @NotNull String name,
+                           @NotNull Position position) throws ValidationException {
         createHome(owner, name, position, plugin.getSettings().doOverwriteExistingHomesWarps(), true);
     }
 
@@ -227,7 +258,8 @@ public class HomesManager {
         return deleted;
     }
 
-    public void setHomePosition(@NotNull User owner, @NotNull String name, @NotNull Position position) throws ValidationException {
+    public void setHomePosition(@NotNull User owner, @NotNull String name,
+                                @NotNull Position position) throws ValidationException {
         final Optional<Home> optionalHome = plugin.getDatabase().getHome(owner, name);
         if (optionalHome.isEmpty()) {
             throw new ValidationException(ValidationException.Type.NOT_FOUND);
@@ -242,7 +274,8 @@ public class HomesManager {
         this.cacheHome(home, true);
     }
 
-    public void setHomeName(@NotNull User owner, @NotNull String name, @NotNull String newName) throws ValidationException {
+    public void setHomeName(@NotNull User owner, @NotNull String name,
+                            @NotNull String newName) throws ValidationException {
         final Optional<Home> optionalHome = plugin.getDatabase().getHome(owner, name);
         if (optionalHome.isEmpty()) {
             throw new ValidationException(ValidationException.Type.NOT_FOUND);
@@ -261,7 +294,8 @@ public class HomesManager {
         this.cacheHome(home, true);
     }
 
-    public void setHomeDescription(@NotNull User owner, @NotNull String name, @NotNull String description) throws ValidationException {
+    public void setHomeDescription(@NotNull User owner, @NotNull String name,
+                                   @NotNull String description) throws ValidationException {
         final Optional<Home> optionalHome = plugin.getDatabase().getHome(owner, name);
         if (optionalHome.isEmpty()) {
             throw new ValidationException(ValidationException.Type.NOT_FOUND);
@@ -304,7 +338,8 @@ public class HomesManager {
         this.cacheHome(home, true);
     }
 
-    public void setHomeMetaTags(@NotNull User owner, @NotNull String name, @NotNull Map<String, String> tags) throws ValidationException {
+    public void setHomeMetaTags(@NotNull User owner, @NotNull String name,
+                                @NotNull Map<String, String> tags) throws ValidationException {
         final Optional<Home> optionalHome = plugin.getDatabase().getHome(owner, name);
         if (optionalHome.isEmpty()) {
             throw new ValidationException(ValidationException.Type.NOT_FOUND);

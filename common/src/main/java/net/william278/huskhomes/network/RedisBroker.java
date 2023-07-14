@@ -30,7 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.logging.Level;
 
 /**
- * Redis PubSub broker implementation
+ * Redis PubSub broker implementation.
  */
 public class RedisBroker extends PluginMessageBroker {
     private RedisImpl redisImpl;

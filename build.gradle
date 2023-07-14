@@ -4,6 +4,7 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'org.cadixdev.licenser' version '0.6.1' apply false
     id 'org.ajoberstar.grgit' version '5.2.0'
+    id 'checkstyle'
     id 'maven-publish'
     id 'java'
 }
@@ -11,7 +12,7 @@ plugins {
 group 'net.william278'
 version "$ext.plugin_version${versionMetadata()}"
 description "$ext.plugin_description"
-defaultTasks 'licenseFormat', 'build'
+defaultTasks 'licenseFormat', 'check', 'build'
 
 ext {
     set 'version', version.toString()
@@ -23,6 +24,7 @@ ext {
 allprojects {
     apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'org.cadixdev.licenser'
+    apply plugin: 'checkstyle'
     apply plugin: 'java'
 
     compileJava.options.encoding = 'UTF-8'
@@ -33,6 +35,10 @@ allprojects {
     repositories {
         mavenLocal()
         mavenCentral()
+        maven {
+            url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+            mavenContent { snapshotsOnly() }
+        }
         maven { url 'https://maven.fabricmc.net/' }
         maven { url 'https://libraries.minecraft.net/' }
         maven { url 'https://api.modrinth.com/maven' }
@@ -55,14 +61,14 @@ allprojects {
         testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.9.3'
     }
 
-    test {
-        useJUnitPlatform()
-    }
-
     license {
         header = rootProject.file('HEADER')
         include '**/*.java'
         newLine = true
+    }
+
+    checkstyle {
+        toolVersion = '10.12.0'
     }
 
     processResources {
@@ -84,7 +90,7 @@ subprojects {
     }
 
     if (['paper', 'fabric'].contains(project.name)) {
-        compileJava.options.release.set 16
+        compileJava.options.release.set 17
     }
 
     if (['bukkit', 'paper', 'plugin', 'fabric', 'sponge'].contains(project.name)) {

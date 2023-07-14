@@ -80,7 +80,7 @@ public class HuskHomesCommand extends Command implements TabProvider {
                         AboutMenu.Credit.of("Pukejoy_1").description("Bulgarian (bg-bg)"))
                 .buttons(
                         AboutMenu.Link.of("https://william278.net/docs/huskhomes").text("Documentation").icon("⛏"),
-                        AboutMenu.Link.of("https://github.com/WiIIiam278/HuskHomes2/issues").text("Issues").icon("❌").color(TextColor.color(0xff9f0f)),
+                        AboutMenu.Link.of("https://github.com/WiIIiam278/HuskHomes/issues").text("Issues").icon("❌").color(TextColor.color(0xff9f0f)),
                         AboutMenu.Link.of("https://discord.gg/tVYhJfyDWG").text("Discord").icon("⭐").color(TextColor.color(0x6773f5)))
                 .build();
     }
@@ -100,12 +100,15 @@ public class HuskHomesCommand extends Command implements TabProvider {
                     .getNearestValidPage(parseIntArg(args, 1).orElse(1)));
             case "reload" -> {
                 if (!plugin.loadConfigs()) {
-                    executor.sendMessage(new MineDown("[Error:](#ff3300) [Failed to reload the plugin. Check console for errors.](#ff7e5e)"));
+                    executor.sendMessage(new MineDown(
+                            "[Error:](#ff3300) [Failed to reload the plugin. Check console for errors.](#ff7e5e)"
+                    ));
                     return;
                 }
-                executor.sendMessage(new MineDown("""
-                        [HuskHomes](#00fb9a bold) [| Reloaded config & message files.](#00fb9a)
-                        [ℹ If you have modified the database or cross-server message broker settings, you need to restart your server for these changes to take effect.](gray)"""
+                executor.sendMessage(new MineDown(
+                        "[HuskHomes](#00fb9a bold) [| Reloaded config & message files.](#00fb9a)\n"
+                                + "[ℹ If you have modified the database or cross-server message broker settings,"
+                                + " you need to restart your server for these changes to take effect.](gray)"
                 ));
             }
             case "update" -> updateChecker.check().thenAccept(checked -> {

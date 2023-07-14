@@ -38,7 +38,7 @@ import java.util.Optional;
 import java.util.logging.Level;
 
 /**
- * A handler for when events take place
+ * A handler for when events take place.
  */
 public class EventListener {
 
@@ -50,7 +50,7 @@ public class EventListener {
     }
 
     /**
-     * Handle when a {@link OnlineUser} joins the server
+     * Handle when a {@link OnlineUser} joins the server.
      *
      * @param onlineUser the joining {@link OnlineUser}
      */
@@ -64,7 +64,9 @@ public class EventListener {
                 this.handleInboundTeleport(onlineUser);
 
                 // Synchronize the global player list
-                plugin.runLater(() -> this.synchronizeGlobalPlayerList(onlineUser, plugin.getLocalPlayerList()), 40L);
+                plugin.runSyncDelayed(() -> this.synchronizeGlobalPlayerList(
+                        onlineUser, plugin.getLocalPlayerList()), 40L
+                );
 
                 // Request updated player lists from other servers
                 if (plugin.getOnlineUsers().size() == 1) {
@@ -91,7 +93,39 @@ public class EventListener {
     }
 
     /**
-     * Handle inbound cross-server teleports
+     * Handle when a {@link OnlineUser} leaves the server.
+     *
+     * @param onlineUser the leaving {@link OnlineUser}
+     */
+    protected final void handlePlayerLeave(@NotNull OnlineUser onlineUser) {
+        plugin.runAsync(() -> {
+            // Set offline position
+            plugin.getDatabase().setOfflinePosition(onlineUser, onlineUser.getPosition());
+
+            // Remove this user's home cache
+            plugin.getManager().homes().removeUserHomes(onlineUser);
+
+            // Update global lists
+            if (plugin.getSettings().doCrossServer()) {
+                final List<String> localPlayerList = plugin.getLocalPlayerList().stream()
+                        .filter(player -> !player.equals(onlineUser.getUsername()))
+                        .toList();
+
+                if (plugin.getSettings().getBrokerType() == Broker.Type.REDIS) {
+                    this.synchronizeGlobalPlayerList(onlineUser, localPlayerList);
+                    return;
+                }
+
+                plugin.getOnlineUsers().stream()
+                        .filter(user -> !user.equals(onlineUser))
+                        .findAny()
+                        .ifPresent(player -> this.synchronizeGlobalPlayerList(player, localPlayerList));
+            }
+        });
+    }
+
+    /**
+     * Handle inbound cross-server teleports.
      *
      * @param teleporter user to handle the checks for
      */
@@ -103,9 +137,12 @@ public class EventListener {
             }
 
             try {
-                teleporter.teleportLocally((Position) teleport.getTarget(), plugin.getSettings().doAsynchronousTeleports());
+                teleporter.teleportLocally(
+                        (Position) teleport.getTarget(),
+                        plugin.getSettings().doAsynchronousTeleports()
+                );
             } catch (TeleportationException e) {
-                e.displayMessage(teleporter, plugin);
+                e.displayMessage(teleporter);
             }
             plugin.getDatabase().clearCurrentTeleport(teleporter);
             teleport.displayTeleportingComplete(teleporter);
@@ -122,7 +159,7 @@ public class EventListener {
         if (bedPosition.isEmpty()) {
             plugin.getSpawn().ifPresent(spawn -> {
                 if (plugin.getSettings().doCrossServer() && !spawn.getServer().equals(plugin.getServerName())) {
-                    plugin.runLater(() -> {
+                    plugin.runSyncDelayed(() -> {
                         try {
                             Teleport.builder(plugin)
                                     .teleporter(teleporter)
@@ -130,14 +167,14 @@ public class EventListener {
                                     .updateLastPosition(false)
                                     .toTeleport().execute();
                         } catch (TeleportationException e) {
-                            e.displayMessage(teleporter, plugin);
+                            e.displayMessage(teleporter);
                         }
                     }, 40L);
                 } else {
                     try {
                         teleporter.teleportLocally(spawn, plugin.getSettings().doAsynchronousTeleports());
                     } catch (TeleportationException e) {
-                        e.displayMessage(teleporter, plugin);
+                        e.displayMessage(teleporter);
                     }
                 }
                 teleporter.sendTranslatableMessage("block.minecraft.spawn.not_valid");
@@ -146,7 +183,7 @@ public class EventListener {
             try {
                 teleporter.teleportLocally(bedPosition.get(), plugin.getSettings().doAsynchronousTeleports());
             } catch (TeleportationException e) {
-                e.displayMessage(teleporter, plugin);
+                e.displayMessage(teleporter);
             }
         }
         plugin.getDatabase().clearCurrentTeleport(teleporter);
@@ -160,29 +197,27 @@ public class EventListener {
      */
     protected final void handlePlayerLeave(@NotNull OnlineUser onlineUser) {
         // Set offline position
-        plugin.runAsync(() -> {
-                    plugin.getDatabase().setOfflinePosition(onlineUser, onlineUser.getPosition());
-                    // Remove this user's home cache
-                    plugin.getManager().homes().removeUserHomes(onlineUser);
+        plugin.getDatabase().setOfflinePosition(onlineUser, onlineUser.getPosition());
 
-                    // Update global lists
-                    if (plugin.getSettings().doCrossServer()) {
-                        final List<String> localPlayerList = plugin.getLocalPlayerList().stream()
-                                .filter(player -> !player.equals(onlineUser.getUsername()))
-                                .toList();
+        // Remove this user's home cache
+        plugin.getManager().homes().removeUserHomes(onlineUser);
 
-                        if (plugin.getSettings().getBrokerType() == Broker.Type.REDIS) {
-                            this.synchronizeGlobalPlayerList(onlineUser, localPlayerList);
-                            return;
-                        }
+        // Update global lists
+        if (plugin.getSettings().doCrossServer()) {
+            final List<String> localPlayerList = plugin.getLocalPlayerList().stream()
+                    .filter(player -> !player.equals(onlineUser.getUsername()))
+                    .toList();
 
-                        plugin.getOnlineUsers().stream()
-                                .filter(user -> !user.equals(onlineUser))
-                                .findAny()
-                                .ifPresent(player -> this.synchronizeGlobalPlayerList(player, localPlayerList));
-                    }
-                }
-        );
+            if (plugin.getSettings().getBrokerType() == Broker.Type.REDIS) {
+                this.synchronizeGlobalPlayerList(onlineUser, localPlayerList);
+                return;
+            }
+
+            plugin.getOnlineUsers().stream()
+                    .filter(user -> !user.equals(onlineUser))
+                    .findAny()
+                    .ifPresent(player -> this.synchronizeGlobalPlayerList(player, localPlayerList));
+        }
     }
 
     // Synchronize the global player list
@@ -260,13 +295,13 @@ public class EventListener {
                     try {
                         builder.toTeleport().execute();
                     } catch (TeleportationException e) {
-                        e.displayMessage(onlineUser, plugin);
+                        e.displayMessage(onlineUser);
                     }
                 });
     }
 
     /**
-     * Handle when a player teleports
+     * Handle when a player teleports.
      *
      * @param onlineUser     the {@link OnlineUser} who teleported
      * @param sourcePosition the source {@link Position} they came from
@@ -281,7 +316,7 @@ public class EventListener {
     }
 
     /**
-     * Handle when an {@link OnlineUser}'s spawn point is updated
+     * Handle when an {@link OnlineUser}'s spawn point is updated.
      *
      * @param onlineUser the {@link OnlineUser} whose spawn point was updated
      * @param position   the new spawn point
@@ -293,7 +328,7 @@ public class EventListener {
     }
 
     /**
-     * Handle when the plugin is disabling (server is shutting down)
+     * Handle when the plugin is disabling (server is shutting down).
      */
     public final void handlePluginDisable() {
         plugin.log(Level.INFO, "Successfully disabled HuskHomes v" + plugin.getVersion());

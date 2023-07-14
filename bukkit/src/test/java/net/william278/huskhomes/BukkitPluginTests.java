@@ -29,7 +29,9 @@ import net.william278.huskhomes.position.*;
 import net.william278.huskhomes.user.BukkitUser;
 import net.william278.huskhomes.user.ConsoleUser;
 import net.william278.huskhomes.user.OnlineUser;
+import net.william278.huskhomes.user.User;
 import net.william278.huskhomes.util.BukkitAdapter;
+import net.william278.huskhomes.util.TransactionResolver;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,6 +39,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -73,7 +77,7 @@ public class BukkitPluginTests {
         @DisplayName("Test Command Registration")
         public void testCommandRegistration() {
             for (BukkitCommand.Type command : BukkitCommand.Type.values()) {
-                Assertions.assertNotNull(plugin.getCommand(command.getCommand().getName()));
+                Assertions.assertNotNull(plugin.getCommand(command.createCommand(plugin).getName()));
             }
             Assertions.assertEquals(BukkitCommand.Type.values().length, plugin.getCommands().size());
         }
@@ -82,7 +86,7 @@ public class BukkitPluginTests {
         @DisplayName("Test Player Adapter")
         public void testPlayerAdaption() {
             PlayerMock player = server.addPlayer();
-            Assertions.assertNotNull(BukkitUser.adapt(player));
+            Assertions.assertNotNull(BukkitUser.adapt(player, plugin));
         }
 
     }
@@ -101,22 +105,22 @@ public class BukkitPluginTests {
                     .orElseThrow(() -> new IllegalStateException("Failed to load locale"));
             final String simpleLocaleText = plugin.getLocales().getRawLocale("error_in_game_only")
                     .orElseThrow(() -> new IllegalStateException("Failed to load raw locale"));
-            BukkitUser.adapt(player).sendMessage(simpleLocale);
+            BukkitUser.adapt(player, plugin).sendMessage(simpleLocale);
             player.assertSaid(simpleLocaleText);
         }
 
         @Test
         @DisplayName("Test Message Dispatching")
         public void testMessageDispatching() {
-            PlayerMock player = server.addPlayer();
+            final BukkitUser user = BukkitUser.adapt(server.addPlayer(), plugin);
 
             final MineDown locale = plugin.getLocales()
                     .getLocale("teleporting_action_bar_warmup", Integer.toString(3))
                     .orElseThrow(() -> new IllegalStateException("Failed to load locale"));
-            BukkitUser.adapt(player).sendActionBar(locale);
-            BukkitUser.adapt(player).sendMessage(locale);
-            BukkitUser.adapt(player).sendTitle(locale, false);
-            BukkitUser.adapt(player).sendTitle(locale, true);
+            user.sendActionBar(locale);
+            user.sendMessage(locale);
+            user.sendTitle(locale, false);
+            user.sendTitle(locale, true);
         }
 
         @Test
@@ -131,11 +135,11 @@ public class BukkitPluginTests {
         @DisplayName("Test Locale Parsing")
         public void testLocaleParsing() {
             final Map<String, String> rawLocales = plugin.getLocales().rawLocales;
-            BukkitUser bukkitUser = BukkitUser.adapt(server.addPlayer());
+            BukkitUser user = BukkitUser.adapt(server.addPlayer(), plugin);
             rawLocales.forEach((key, value) -> {
                 Optional<MineDown> locale = plugin.getLocales().getLocale(key);
                 Assertions.assertTrue(locale.isPresent());
-                bukkitUser.sendMessage(locale.get());
+                user.sendMessage(locale.get());
             });
         }
 
@@ -170,7 +174,7 @@ public class BukkitPluginTests {
             final PlayerMock player = server.addPlayer();
             player.setOp(true);
 
-            final BukkitUser playerUser = BukkitUser.adapt(player);
+            final BukkitUser playerUser = BukkitUser.adapt(player, plugin);
             return commands.stream()
                     .flatMap(command -> Stream.of(Arguments.of(command, playerUser, command.getName())));
         }
@@ -190,14 +194,18 @@ public class BukkitPluginTests {
 
         @DisplayName("Test Validator Accepts Valid Names")
         @ParameterizedTest(name = "Valid Name: \"{0}\"")
-        @ValueSource(strings = {"ValidName", "Valid_Name", "Valid-Name", "ValidN4me", "ValidName123", "ValidName-123", "ValidName_123", "V"})
+        @ValueSource(strings = {
+                "ValidName", "Valid_Name", "Valid-Name", "ValidN4me", "ValidName123", "VN-123", "ValidName_123", "V"
+        })
         public void testValidNameIsValid(@NotNull String name) {
             Assertions.assertTrue(plugin.getValidator().isValidName(name));
         }
 
         @DisplayName("Test Validator Rejects Invalid Names")
         @ParameterizedTest(name = "Invalid Name: \"{0}\"")
-        @ValueSource(strings = {"Invalid Name", "•♣♠", "Invali♣Name", "Invalid.Name", "", " ", "\0", "InvalidName12345678901234567890"})
+        @ValueSource(strings = {
+                "Invalid Name", "•♣♠", "Invali♣Name", "Invalid.Name", "", " ", "\0", "InvalidName12345678901234567890"
+        })
         public void testInvalidNameIsInvalid(@NotNull String name) {
             Assertions.assertFalse(plugin.getValidator().isValidName(name));
         }
@@ -208,8 +216,8 @@ public class BukkitPluginTests {
                 "Lorem ipsum text", "Lorem ipsum text with special characters •♣♠",
                 "Lorem ipsum text with special characters •♣♠ and numbers 1234567890",
                 "Lorem ipsum text with special characters •♣♠ and numbers 1234567890 and whitespace",
-                "Lorem ipsum text with special characters •♣♠ and numbers 1234567890 and whitespace and a very long" +
-                " description that is 255 characters long and should be accepted by the validator"
+                "Lorem ipsum text with special characters •♣♠ and numbers 1234567890 and whitespace and a very long"
+                        + " description that is 255 characters long and should be accepted by the validator"
         })
         public void testValidDescriptionIsValid(@NotNull String description) {
             Assertions.assertTrue(plugin.getValidator().isValidDescription(description));
@@ -217,10 +225,12 @@ public class BukkitPluginTests {
 
         @DisplayName("Test Validator Rejects Invalid Descriptions")
         @ParameterizedTest(name = "Invalid Description: \"{0}\"")
-        @ValueSource(strings = {"Lorem ipsum text with special characters •♣♠ and numbers 1234567890 and whitespace and" +
-                                "a very long description that is more than 256 characters long and should be rejected " +
-                                "by the validator because it is far, far too long and thus exceeds the maximum length " +
-                                "of 255 characters that are allowed for a description of a home or a warp."})
+        @ValueSource(strings = {
+                "Lorem ipsum text with special characters •♣♠ and numbers 1234567890 and whitespace and"
+                        + "a very long description that is more than 256 characters long and should be rejected "
+                        + "by the validator because it is far, far too long and thus exceeds the maximum length "
+                        + "of 255 characters that are allowed for a description of a home or a warp."
+        })
         public void testInvalidDescriptionIsInvalid(@NotNull String description) {
             Assertions.assertFalse(plugin.getValidator().isValidDescription(description));
         }
@@ -228,10 +238,65 @@ public class BukkitPluginTests {
     }
 
     @Nested
+    @DisplayName("Cooldown Tests")
+    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+    public class CooldownTests {
+        private static User player;
+        private static final TransactionResolver.Action ACTION = TransactionResolver.Action.HOME_TELEPORT;
+        private static final Duration DURATION = Duration.ofSeconds(100);
+
+        @BeforeAll
+        public static void setup() {
+            player = BukkitUser.adapt(server.addPlayer(), plugin);
+        }
+
+        @DisplayName("Test Applying Cooldown")
+        @Order(1)
+        @Test
+        public void testApplyingCooldown() {
+            plugin.getDatabase().ensureUser(player);
+            Assertions.assertTrue(plugin.getDatabase().getUserData(player.getUuid()).isPresent());
+
+            plugin.getDatabase().setCooldown(ACTION, player, Instant.now().plus(DURATION));
+            Assertions.assertTrue(plugin.getDatabase().getCooldown(ACTION, player).isPresent());
+        }
+
+        @DisplayName("Test Removing Cooldown")
+        @Order(2)
+        @Test
+        public void testRemovingCooldown() {
+            Assertions.assertTrue(plugin.getDatabase().getCooldown(ACTION, player).isPresent());
+            plugin.getDatabase().removeCooldown(ACTION, player);
+            Assertions.assertFalse(plugin.getDatabase().getCooldown(ACTION, player).isPresent());
+        }
+
+        @DisplayName("Test Cooldown Expiration")
+        @Order(3)
+        @Test
+        public void testCooldownExpiration() {
+            Assertions.assertTrue(plugin.getDatabase().getCooldown(ACTION, player).isEmpty());
+            plugin.getDatabase().setCooldown(ACTION, player, Instant.now().minus(DURATION));
+
+            final Optional<Instant> cooldown = plugin.getDatabase().getCooldown(ACTION, player);
+            Assertions.assertTrue(cooldown.isPresent());
+            Assertions.assertTrue(cooldown.get().isBefore(Instant.now()));
+        }
+
+    }
+
+
+    @Nested
     @DisplayName("Warp Tests")
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     public class WarpTests {
-        private static final List<String> WARP_NAMES = List.of("warple", "example", "exmaination", "123234__44", "a", "1");
+        private static final List<String> WARP_NAMES = List.of(
+                "warple",
+                "example",
+                "exmaination",
+                "123234__44",
+                "a",
+                "1"
+        );
 
         @DisplayName("Test Warp Creation")
         @ParameterizedTest(name = "Warp Name: \"{0}\"")
@@ -250,7 +315,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Rename: \"{0}\" > \"{0}2\"")
         @MethodSource("provideWarpData")
         @Order(2)
-        public void testWarpRenaming(@NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testWarpRenaming(@NotNull String name, @NotNull Position position) {
             final String newName = (name + "2");
             plugin.getManager().warps().setWarpName(name, newName);
             Assertions.assertTrue(plugin.getDatabase().getWarp(newName).isPresent());
@@ -270,7 +336,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Edit Description: \"{0}\"")
         @MethodSource("provideWarpData")
         @Order(3)
-        public void testWarpChangingDescription(@NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testWarpChangingDescription(@NotNull String name, @NotNull Position position) {
             final String description = "This is a test description for " + name + ".";
             plugin.getManager().warps().setWarpDescription(name, description);
             final Optional<String> warpDescription = plugin.getDatabase().getWarp(name)
@@ -286,8 +353,11 @@ public class BukkitPluginTests {
         @Order(4)
         public void testWarpRelocation(@NotNull String name, @NotNull Position position) {
             final World world = BukkitAdapter.adaptWorld(server.getWorld("world")).orElseThrow();
-            final Position newPosition = Position.at(position.getX() + 10, position.getY() + 10, position.getZ() + 10,
-                    0, 0, world, plugin.getServerName());
+            final Position newPosition = Position.at(
+                    position.getX() + 10, position.getY() + 10, position.getZ() + 10,
+                    0, 0,
+                    world, plugin.getServerName()
+            );
             plugin.getManager().warps().setWarpPosition(name, newPosition);
 
             final Optional<Position> warpPosition = plugin.getDatabase().getWarp(name).map(warp -> warp);
@@ -303,8 +373,11 @@ public class BukkitPluginTests {
         @Order(5)
         public void testWarpOverwrite(@NotNull String name, @NotNull Position position) {
             final World world = BukkitAdapter.adaptWorld(server.getWorld("world")).orElseThrow();
-            final Position newPosition = Position.at(position.getX() + 10, position.getY() + 10, position.getZ() + 10,
-                    0, 0, world, plugin.getServerName());
+            final Position newPosition = Position.at(
+                    position.getX() + 10, position.getY() + 10, position.getZ() + 10,
+                    0, 0,
+                    world, plugin.getServerName()
+            );
             plugin.getManager().warps().createWarp(name, newPosition, true);
 
             final Optional<Position> warpPosition = plugin.getDatabase().getWarp(name).map(warp -> warp);
@@ -318,7 +391,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Delete Warp: \"{0}\"")
         @MethodSource("provideWarpData")
         @Order(6)
-        public void testWarpDeletion(@NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testWarpDeletion(@NotNull String name, @NotNull Position position) {
             plugin.getManager().warps().deleteWarp(name);
             Assertions.assertFalse(plugin.getDatabase().getWarp(name).isPresent());
             Assertions.assertFalse(plugin.getManager().warps()
@@ -333,7 +407,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Query: \"{0}\"")
         @MethodSource("provideWarpData")
         @Order(8)
-        public void testWarpCaseInsensitiveQuery(@NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testWarpCaseInsensitiveQuery(@NotNull String name, @NotNull Position position) {
             final String nameUpper = name.toUpperCase();
             final Optional<Warp> nameUpperWarp = plugin.getDatabase().getWarp(nameUpper, true);
             Assertions.assertTrue(nameUpperWarp.isPresent());
@@ -369,13 +444,21 @@ public class BukkitPluginTests {
     @DisplayName("Home Tests")
     @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
     public class HomeTests {
-        private static final List<String> HOME_NAMES = List.of("mr_home", "homble", "seaside", "hovel", "tokyo-3", "testington", "h");
+        private static final List<String> HOME_NAMES = List.of(
+                "mr_home",
+                "homble",
+                "seaside",
+                "hovel",
+                "tokyo-3",
+                "testington",
+                "h"
+        );
         private static BukkitUser homeOwner;
 
         @DisplayName("Ensure User Data")
         @BeforeAll
         public static void createHomeUser() {
-            homeOwner = BukkitUser.adapt(server.addPlayer("TestUser278"));
+            homeOwner = BukkitUser.adapt(server.addPlayer("TestUser278"), plugin);
             plugin.getDatabase().ensureUser(homeOwner);
             Assertions.assertTrue(plugin.getDatabase().getUserData(homeOwner.getUuid()).isPresent());
         }
@@ -397,7 +480,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Rename: \"{1}\" > \"{1}2\"")
         @MethodSource("provideHomeData")
         @Order(2)
-        public void testHomeRenaming(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testHomeRenaming(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position position) {
             final String newName = "new_" + name;
             plugin.getManager().homes().setHomeName(owner, name, newName);
             Assertions.assertTrue(plugin.getDatabase().getHome(owner, newName).isPresent());
@@ -424,7 +508,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Edit Description: \"{1}\"")
         @MethodSource("provideHomeData")
         @Order(3)
-        public void testHomeDescription(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testHomeDescription(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position position) {
             final String description = "This is a test description for the home " + name + "!";
             plugin.getManager().homes().setHomeDescription(owner, name, description);
             Assertions.assertTrue(plugin.getDatabase().getHome(owner, name).isPresent());
@@ -442,8 +527,11 @@ public class BukkitPluginTests {
         @Order(4)
         public void testHomeRelocation(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position position) {
             final World world = BukkitAdapter.adaptWorld(server.getWorld("world")).orElseThrow();
-            final Position newPosition = Position.at(position.getX() + 10, position.getY() + 10, position.getZ() + 10,
-                    0, 0, world, plugin.getServerName());
+            final Position newPosition = Position.at(
+                    position.getX() + 10, position.getY() + 10, position.getZ() + 10,
+                    0, 0,
+                    world, plugin.getServerName()
+            );
             plugin.getManager().homes().setHomePosition(owner, name, newPosition);
             Assertions.assertTrue(plugin.getDatabase().getHome(owner, name).isPresent());
 
@@ -460,8 +548,11 @@ public class BukkitPluginTests {
         @Order(5)
         public void testHomeOverwrite(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position position) {
             final World world = BukkitAdapter.adaptWorld(server.getWorld("world")).orElseThrow();
-            final Position newPosition = Position.at(position.getX() + 10, position.getY() + 10, position.getZ() + 10,
-                    0, 0, world, plugin.getServerName());
+            final Position newPosition = Position.at(
+                    position.getX() + 10, position.getY() + 10, position.getZ() + 10,
+                    0, 0,
+                    world, plugin.getServerName()
+            );
             plugin.getManager().homes().setHomePosition(owner, name, newPosition);
             Assertions.assertTrue(plugin.getDatabase().getHome(owner, name).isPresent());
 
@@ -476,7 +567,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Make Public: \"{1}\"")
         @MethodSource("provideHomeData")
         @Order(6)
-        public void testHomeMakePublic(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testHomeMakePublic(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position p) {
             plugin.getManager().homes().setHomePrivacy(owner, name, true);
             Assertions.assertTrue(plugin.getDatabase().getHome(owner, name).isPresent());
 
@@ -490,7 +582,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Make Private: \"{1}\"")
         @MethodSource("provideHomeData")
         @Order(7)
-        public void testHomeMakePrivate(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testHomeMakePrivate(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position p) {
             plugin.getManager().homes().setHomePrivacy(owner, name, false);
             Assertions.assertTrue(plugin.getDatabase().getHome(owner, name).isPresent());
 
@@ -506,7 +599,8 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Query: \"{1}\"")
         @MethodSource("provideHomeData")
         @Order(8)
-        public void testWarpCaseInsensitiveQuery(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        @SuppressWarnings("unused")
+        public void testWarpCaseInsensitiveQuery(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position p) {
             final String nameUpper = name.toUpperCase();
             final Optional<Home> nameUpperWarp = plugin.getDatabase().getHome(owner, nameUpper, true);
             Assertions.assertTrue(nameUpperWarp.isPresent());
@@ -522,7 +616,7 @@ public class BukkitPluginTests {
         @ParameterizedTest(name = "Delete: \"{1}\"")
         @MethodSource("provideHomeData")
         @Order(9)
-        public void testHomeDeletion(@NotNull OnlineUser owner, @NotNull String name, @SuppressWarnings("unused") @NotNull Position position) {
+        public void testHomeDeletion(@NotNull OnlineUser owner, @NotNull String name, @NotNull Position position) {
             plugin.getManager().homes().deleteHome(owner, name);
             Assertions.assertFalse(plugin.getDatabase().getHome(owner, name).isPresent());
             Assertions.assertFalse(plugin.getManager().homes().getUserHomes()
