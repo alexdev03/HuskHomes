@@ -8,8 +8,11 @@ plugins {
 dependencies {
     implementation project(path: ':common')
 
+    compileOnly 'org.metadevs:RedisTabAPI:1.0-EXPERIMENTAL'
+
+
     implementation 'org.bstats:bstats-sponge:3.0.2'
-    implementation 'redis.clients:jedis:' + jedis_version
+    implementation 'io.lettuce:lettuce-core:' + lettuce_version
     implementation 'com.mysql:mysql-connector-j:' + mysql_driver_version
     implementation 'org.xerial:sqlite-jdbc:' + sqlite_driver_version
 }

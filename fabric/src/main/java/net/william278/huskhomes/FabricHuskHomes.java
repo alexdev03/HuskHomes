@@ -67,6 +67,7 @@ import net.william278.huskhomes.util.UnsafeBlocks;
 import net.william278.huskhomes.util.Validator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.api.RedisTabAPI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.spi.LoggingEventBuilder;
@@ -230,6 +231,11 @@ public class FabricHuskHomes implements DedicatedServerModInitializer, HuskHomes
     @NotNull
     public Set<SavedUser> getSavedUsers() {
         return savedUsers;
+    }
+
+    @Override
+    public RedisTabAPI getRedisTabAPI() {
+        return null;
     }
 
     @Override

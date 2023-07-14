@@ -23,8 +23,9 @@ dependencies {
     }
     modImplementation include("net.kyori:adventure-platform-fabric:${adventure_platform_fabric_version}")
     modImplementation include("me.lucko:fabric-permissions-api:${fabric_permissions_api_version}")
+    compileOnly 'org.metadevs:RedisTabAPI:1.0-EXPERIMENTAL'
 
-    implementation include("redis.clients:jedis:$jedis_version")
+    implementation include("io.lettuce:lettuce-core:$lettuce_version")
     implementation include("org.apache.commons:commons-pool2:$commons_pool_version")
     implementation include("com.mysql:mysql-connector-j:$mysql_driver_version")
     implementation include("org.xerial:sqlite-jdbc:$sqlite_driver_version")

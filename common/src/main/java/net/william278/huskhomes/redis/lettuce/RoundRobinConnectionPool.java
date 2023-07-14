@@ -30,7 +30,8 @@ public class RoundRobinConnectionPool<K, V> {
     private StatefulRedisConnection<K, V>[] elements;
     private final Supplier<StatefulRedisConnection<K, V>> statefulRedisConnectionSupplier;
 
-    public RoundRobinConnectionPool(Supplier<StatefulRedisConnection<K, V>> statefulRedisConnectionSupplier, int poolSize) {
+    public RoundRobinConnectionPool(Supplier<StatefulRedisConnection<K, V>> statefulRedisConnectionSupplier,
+                                    int poolSize) {
         this.statefulRedisConnectionSupplier = statefulRedisConnectionSupplier;
         this.elements = new StatefulRedisConnection[poolSize];
         for (int i = 0; i < poolSize; i++) {

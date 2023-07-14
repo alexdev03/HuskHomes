@@ -25,7 +25,6 @@ import net.william278.desertwell.util.Version;
 import net.william278.huskhomes.api.HuskHomesAPI;
 import net.william278.huskhomes.command.BukkitCommand;
 import net.william278.huskhomes.command.Command;
-import net.william278.huskhomes.command.DisabledCommand;
 import net.william278.huskhomes.config.Locales;
 import net.william278.huskhomes.config.Server;
 import net.william278.huskhomes.config.Settings;
@@ -36,7 +35,6 @@ import net.william278.huskhomes.database.SqLiteDatabase;
 import net.william278.huskhomes.event.BukkitEventDispatcher;
 import net.william278.huskhomes.hook.Hook;
 import net.william278.huskhomes.hook.PlaceholderAPIHook;
-import net.william278.huskhomes.hook.RedisEconomyHook;
 import net.william278.huskhomes.hook.VaultEconomyHook;
 import net.william278.huskhomes.importer.EssentialsXImporter;
 import net.william278.huskhomes.listener.BukkitEventListener;
@@ -64,6 +62,8 @@ import org.bukkit.plugin.java.JavaPluginLoader;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
+import org.metadevs.redistab.api.RedisTabAPI;
 import space.arim.morepaperlib.MorePaperLib;
 import space.arim.morepaperlib.scheduling.GracefulScheduling;
 import space.arim.morepaperlib.scheduling.ScheduledTask;
@@ -103,9 +103,8 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     private MorePaperLib paperLib;
     @Nullable
     private Broker broker;
-    private BukkitAudiences audiences;
     private RedisTabAPI redisTabAPI;
-    private MorePaperLib paperLib;
+
 
     private static BukkitHuskHomes instance;
 
@@ -123,6 +122,11 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
     protected BukkitHuskHomes(@NotNull JavaPluginLoader loader, @NotNull PluginDescriptionFile description,
                               @NotNull File dataFolder, @NotNull File file) {
         super(loader, description, dataFolder, file);
+    }
+
+    @Override
+    public void onLoad() {
+        instance = this;
     }
 
     @Override
@@ -503,17 +507,13 @@ public class BukkitHuskHomes extends JavaPlugin implements HuskHomes, BukkitTask
         }
     }
 
-    @Override
+
     @NotNull
     public GracefulScheduling getScheduler() {
         return paperLib.scheduling();
     }
 
-    @Override
-    @NotNull
-    public ConcurrentHashMap<UUID, ScheduledTask> getTasks() {
-        return tasks;
-    }
+
 
     @Override
     @NotNull

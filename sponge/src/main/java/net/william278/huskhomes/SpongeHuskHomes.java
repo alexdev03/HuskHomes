@@ -55,6 +55,7 @@ import org.bstats.charts.SimplePie;
 import org.bstats.sponge.Metrics;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.metadevs.redistab.api.RedisTabAPI;
 import org.spongepowered.api.Game;
 import org.spongepowered.api.ResourceKey;
 import org.spongepowered.api.command.Command.Raw;
@@ -231,6 +232,11 @@ public class SpongeHuskHomes implements HuskHomes, SpongeTask.Supplier, SpongeSa
     @Override
     public Set<SavedUser> getSavedUsers() {
         return savedUsers;
+    }
+
+    @Override
+    public RedisTabAPI getRedisTabAPI() {
+        return null;
     }
 
     @NotNull

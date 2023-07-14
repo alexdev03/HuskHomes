@@ -112,14 +112,18 @@ public class BukkitEventListener extends EventListener implements Listener {
 
 
     @EventHandler
-    public void onPluginLoad(PluginEnableEvent e){
-        if(!e.getPlugin().getName().equals("RedisTab")) return;
+    public void onPluginLoad(PluginEnableEvent e) {
+        if (!e.getPlugin().getName().equals("RedisTab")) {
+            return;
+        }
 
         BukkitHuskHomes plugin = BukkitHuskHomes.getInstance();
 
         plugin.getLogger().info("RedisTab has been detected, enabling RedisTab support");
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.setRedisTabAPI(plugin.getServer().getServicesManager().load(RedisTabAPI.class)), 5);
+        Bukkit.getScheduler().runTaskLater(plugin,
+                () -> plugin.setRedisTabAPI(plugin.getServer().getServicesManager().load(RedisTabAPI.class)),
+                5);
     }
 
 }

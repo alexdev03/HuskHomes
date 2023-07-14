@@ -150,7 +150,7 @@ public class EventListener {
     }
 
     /**
-     * Handle an inbound global respawn
+     * Handle an inbound global respawn.
      *
      * @param teleporter the user to handle the checks for
      */
@@ -190,37 +190,6 @@ public class EventListener {
         plugin.getDatabase().setRespawnPosition(teleporter, bedPosition.orElse(null));
     }
 
-    /**
-     * Handle when a {@link OnlineUser} leaves the server
-     *
-     * @param onlineUser the leaving {@link OnlineUser}
-     */
-    protected final void handlePlayerLeave(@NotNull OnlineUser onlineUser) {
-        // Set offline position
-        plugin.getDatabase().setOfflinePosition(onlineUser, onlineUser.getPosition());
-
-        // Remove this user's home cache
-        plugin.getManager().homes().removeUserHomes(onlineUser);
-
-        // Update global lists
-        if (plugin.getSettings().doCrossServer()) {
-            final List<String> localPlayerList = plugin.getLocalPlayerList().stream()
-                    .filter(player -> !player.equals(onlineUser.getUsername()))
-                    .toList();
-
-            if (plugin.getSettings().getBrokerType() == Broker.Type.REDIS) {
-                this.synchronizeGlobalPlayerList(onlineUser, localPlayerList);
-                return;
-            }
-
-            plugin.getOnlineUsers().stream()
-                    .filter(user -> !user.equals(onlineUser))
-                    .findAny()
-                    .ifPresent(player -> this.synchronizeGlobalPlayerList(player, localPlayerList));
-        }
-    }
-
-    // Synchronize the global player list
     private void synchronizeGlobalPlayerList(@NotNull OnlineUser user, @NotNull List<String> localPlayerList) {
         // Send this server's player list to all servers
         Message.builder()
@@ -242,7 +211,7 @@ public class EventListener {
     }
 
     /**
-     * Handle when a {@link OnlineUser} dies
+     * Handle when a {@link OnlineUser} dies.
      *
      * @param onlineUser the {@link OnlineUser} who died
      */
@@ -254,7 +223,7 @@ public class EventListener {
     }
 
     /**
-     * Handle when a {@link OnlineUser} respawns after dying
+     * Handle when a {@link OnlineUser} respawns after dying.
      *
      * @param onlineUser the respawning {@link OnlineUser}
      */

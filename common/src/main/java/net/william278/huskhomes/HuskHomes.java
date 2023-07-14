@@ -367,7 +367,9 @@ public interface HuskHomes extends Task.Supplier, EventDispatcher, SafetyResolve
     default List<String> getPlayerList(boolean includeVanished) {
         List<String> list = new ArrayList<>(getRedisTabAPI().getTotalPlayers());
 
-        if(!includeVanished) list.removeAll(getRedisTabAPI().getVanishedPlayers());
+        if (!includeVanished) {
+            list.removeAll(getRedisTabAPI().getVanishedPlayers());
+        }
 
         return list;
     }

@@ -21,7 +21,7 @@ package net.william278.huskhomes.redis.lettuce;
 
 import io.lettuce.core.pubsub.RedisPubSubListener;
 
-public abstract class RedisPubSub<K,V> implements RedisPubSubListener<K,V> {
+public abstract class RedisPubSub<K, V> implements RedisPubSubListener<K, V> {
     public abstract void message(K channel, V message);
 
 
